@@ -1,0 +1,49 @@
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+public class CrptApi {
+
+    private final Lock lock = new ReentrantLock();
+    private final long intervalMillis;
+    private final int requestLimit;
+    private long lastRequestTime = System.currentTimeMillis();
+    private AtomicInteger requestCount = new AtomicInteger(0);
+
+    public CrptApi(TimeUnit timeUnit, int requestLimit) {
+        this.intervalMillis = timeUnit.toMillis(1);
+        this.requestLimit = requestLimit;
+    }
+
+    public void createDocument(Document document, String signature) {
+        lock.lock();
+        try {
+            long currentTime = System.currentTimeMillis();
+            long elapsedTime = currentTime - lastRequestTime;
+            if (elapsedTime >= intervalMillis) {
+                lastRequestTime = currentTime;
+                requestCount.set(0);
+            }
+            if (requestCount.get() >= requestLimit) {
+                return;
+            }
+            System.out.println("Document created: " + document);
+            System.out.println("Signature: " + signature);
+            requestCount.incrementAndGet();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    static class Document {
+        // Поля документа
+    }
+
+    public static void main(String[] args) {
+        CrptApi api = new CrptApi(TimeUnit.SECONDS, 5);
+        CrptApi.Document document = new CrptApi.Document();
+        String signature = "signature";
+        api.createDocument(document, signature);
+    }
+}
